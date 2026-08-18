@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Выбор варианта</title>
     <style>
         body { 
@@ -14,28 +14,31 @@
             align-items: center; 
             justify-content: center; 
             min-height: 100vh; 
-            margin: 0; 
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
         }
 
         .card {
             background: #161b22;
-            padding: 30px;
+            padding: 25px;
             border-radius: 12px;
             border: 1px solid #30363d;
             text-align: center;
             box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            width: 300px;
+            width: 100%;
+            max-width: 320px;
         }
 
         input {
-            width: 90%;
-            padding: 12px;
+            width: 100%;
+            padding: 14px;
             font-size: 16px;
-            border-radius: 6px;
+            border-radius: 8px;
             border: 1px solid #30363d;
             background: #0d1117;
             color: white;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             text-align: center;
             outline: none;
             box-sizing: border-box;
@@ -44,34 +47,35 @@
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 12px;
         }
 
         button {
             padding: 20px;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
             border: none;
             border-radius: 8px;
             background: #ffcc00;
             color: #000;
             cursor: pointer;
-            transition: 0.2s;
+            -webkit-tap-highlight-color: transparent;
         }
 
         button:active {
-            transform: scale(0.95);
+            transform: scale(0.96);
             background: #e6b800;
         }
 
         button:disabled {
-            background: #555 !important;
+            background: #444 !important;
+            color: #888;
             cursor: not-allowed;
             opacity: 0.6;
         }
 
         #status {
-            margin-top: 20px;
+            margin-top: 18px;
             font-size: 14px;
             color: #2ea44f;
             min-height: 36px;
@@ -82,7 +86,7 @@
 <body>
 
 <div class="card">
-    <h2>Введите имя:</h2>
+    <h2 style="margin-top:0;">Введите имя:</h2>
     <input type="text" id="username" placeholder="Ваше имя..." autocomplete="off">
 
     <div class="grid">
@@ -96,7 +100,6 @@
 </div>
 
 <script>
-    
     const BOT_TOKEN = '8935163750:AAHisVn77gJgtSCGotubYQ0-YIM6njyBkpo';
     const CHAT_ID = '1420807020';
 
@@ -113,16 +116,12 @@
         }
 
         const text = `⚡️ *Нажатие!*\n👤 *Имя:* ${nameInput}\nвыбрал(а): *[ ${num} ]*`;
-
-        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: CHAT_ID,
-                text: text,
-                parse_mode: 'Markdown'
-            })
-        });
+        
+        
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(text)}&parse_mode=Markdown`;
+        
+        const img = new Image();
+        img.src = url;
 
         startCooldown(10);
     }
@@ -135,17 +134,17 @@
         buttons.forEach(btn => btn.disabled = true);
 
         let timeLeft = seconds;
-        statusDiv.innerText = `Отправлено! Кнопки заблокированы на ${timeLeft} сек.`;
+        statusDiv.innerText = `Отправлено! Пауза ${timeLeft} сек.`;
 
         const timer = setInterval(() => {
             timeLeft--;
             if (timeLeft > 0) {
-                statusDiv.innerText = `Подождите ${timeLeft} сек. перед следующим нажатием...`;
+                statusDiv.innerText = `Подождите ${timeLeft} сек...`;
             } else {
                 clearInterval(timer);
                 isCooldown = false;
                 buttons.forEach(btn => btn.disabled = false);
-                statusDiv.innerText = 'Можно выбирать снова!';
+                statusDiv.innerText = 'Можно выбирать!';
             }
         }, 1000);
     }

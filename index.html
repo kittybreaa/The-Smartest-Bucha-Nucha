@@ -1,96 +1,12 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <title>Выбор варианта</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            background: #0d1117; 
-            color: white; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            margin: 0; 
-        }
-
-        .card {
-            background: #161b22;
-            padding: 30px;
-            border-radius: 12px;
-            border: 1px solid #30363d;
-            text-align: center;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-        }
-
-        input {
-            width: 80%;
-            padding: 12px;
-            font-size: 16px;
-            border-radius: 6px;
-            border: 1px solid #30363d;
-            background: #0d1117;
-            color: white;
-            margin-bottom: 25px;
-            text-align: center;
-            outline: none;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        button {
-            padding: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            border: none;
-            border-radius: 8px;
-            background: #ffcc00;
-            color: #000;
-            cursor: pointer;
-            transition: 0.1s;
-        }
-
-        button:active {
-            transform: scale(0.95);
-            background: #e6b800;
-        }
-
-        #status {
-            margin-top: 15px;
-            font-size: 14px;
-            color: #2ea44f;
-            min-height: 20px;
-        }
-    </style>
-</head>
-<body>
-
-<div class="card">
-    <h2>Введите ваше имя:</h2>
-    <input type="text" id="username" placeholder="Ваше имя..." autocomplete="off">
-
-    <div class="grid">
-        <button onclick="sendChoice(1)">1</button>
-        <button onclick="sendChoice(2)">2</button>
-        <button onclick="sendChoice(3)">3</button>
-        <button onclick="sendChoice(4)">4</button>
-    </div>
-
-    <div id="status"></div>
-</div>
-
 <script>
-    // Подставь сюда свои данные:
     const BOT_TOKEN = '8935163750:AAHisVn77gJgtSCGotubYQ0-YIM6njyBkpo';
     const CHAT_ID = '1420807020';
 
+    let isCooldown = false; 
+
     function sendChoice(num) {
+        if (isCooldown) return; // 
+
         const nameInput = document.getElementById('username').value.trim();
         const statusDiv = document.getElementById('status');
 
@@ -99,10 +15,9 @@
             return;
         }
 
-        // Формируем текст мгновенного сообщения
+        
         const text = `⚡️ *Нажатие!*\n👤 *Имя:* ${nameInput}\nвыбрал(а): *[ ${num} ]*`;
 
-        // Моментальная отправка прямо из браузера в Telegram
         fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -113,9 +28,32 @@
             })
         });
 
-        statusDiv.innerText = `Выбрано: ${num}`;
+        
+        startCooldown(10);
+    }
+
+    function startCooldown(seconds) {
+        isCooldown = true;
+        const buttons = document.querySelectorAll('.grid button');
+        const statusDiv = document.getElementById('status');
+
+        // Блокируем все кнопки
+        buttons.forEach(btn => btn.disabled = true);
+
+        let timeLeft = seconds;
+        statusDiv.innerText = `Ответ отправлен! Повторить можно через ${timeLeft} сек.`;
+
+        // Запускаем таймер каждую секунду
+        const timer = setInterval(() => {
+            timeLeft--;
+            if (timeLeft > 0) {
+                statusDiv.innerText = `Подождите ${timeLeft} сек. перед следующим нажатием...`;
+            } else {
+                clearInterval(timer);
+                isCooldown = false;
+                buttons.forEach(btn => btn.disabled = false); // Разблокируем кнопки
+                statusDiv.innerText = 'Готово! Можно выбирать снова.';
+            }
+        }, 1000);
     }
 </script>
-
-</body>
-</html>

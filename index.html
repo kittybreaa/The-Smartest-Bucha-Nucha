@@ -37,13 +37,13 @@
         const buttons = document.querySelectorAll('.grid button');
         const statusDiv = document.getElementById('status');
 
-        // Блокируем все кнопки
+        
         buttons.forEach(btn => btn.disabled = true);
 
         let timeLeft = seconds;
         statusDiv.innerText = `Ответ отправлен! Повторить можно через ${timeLeft} сек.`;
 
-        // Запускаем таймер каждую секунду
+        
         const timer = setInterval(() => {
             timeLeft--;
             if (timeLeft > 0) {

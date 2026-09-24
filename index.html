@@ -38,26 +38,33 @@
             border: 1px solid #30363d;
             background: #0d1117;
             color: white;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             text-align: center;
             outline: none;
             box-sizing: border-box;
         }
 
-        /* Панель ведущего для 20 вопросов (скрыта по умолчанию) */
+        #questionIndicator {
+            font-size: 16px;
+            color: #58a6ff;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        /* Панель ведущего */
         #adminPanel {
             display: none;
             background: #21262d;
             border: 1px solid #30363d;
-            padding: 15px;
+            padding: 12px;
             border-radius: 8px;
             margin-bottom: 20px;
         }
 
         .admin-title {
-            font-size: 14px;
+            font-size: 13px;
             color: #f0883e;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             font-weight: bold;
             text-align: left;
         }
@@ -65,14 +72,14 @@
         .q-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 6px;
-            max-height: 160px;
+            gap: 5px;
+            max-height: 140px;
             overflow-y: auto;
         }
 
         .q-btn {
-            padding: 8px 0;
-            font-size: 14px;
+            padding: 6px 0;
+            font-size: 13px;
             background: #161b22;
             color: #c9d1d9;
             border: 1px solid #30363d;
@@ -129,17 +136,18 @@
 <body>
 
 <div class="card">
-    <h2 style="margin-top:0;">Викторина</h2>
+    <h2 style="margin-top:0; font-size: 20px;">Викторина</h2>
     
-    <input type="text" id="username" placeholder="Ваше имя..." autocomplete="off">
-
-    <!-- ПАНЕЛЬ ВЕДУЩЕГО (появится только если открыть ссылку с ?admin=1) -->
+    <!-- Панель ведущего видна только по ссылке ?admin=1 -->
     <div id="adminPanel">
-        <div class="admin-title">⚙️ Выберите текущий вопрос:</div>
-        <div class="q-grid" id="qGrid">
-            <!-- Кнопки от 1 до 20 сгенерируются автоматически через JavaScript -->
-        </div>
+        <div class="admin-title">⚙️ Панель ведущего (выбери вопрос):</div>
+        <div class="q-grid" id="qGrid"></div>
     </div>
+
+    <!-- Индикатор текущего вопроса у игрока -->
+    <div id="questionIndicator">Загрузка вопроса...</div>
+
+    <input type="text" id="username" placeholder="Ваше имя..." autocomplete="off">
 
     <div class="grid">
         <button class="ans-btn" onclick="sendChoice(1)">1</button>
@@ -152,7 +160,7 @@
 </div>
 
 <script>
-    // Ссылка на ваш Google Apps Script
+    // Вставь сюда свою ссылку на Google Apps Script
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwo8_yCHgwYCXXXl8Tgd3Olue23opWC2I6m6N-h_FH1MV_nrB3d-dbpPjuz0w8-Q44Tgw/exec';
 
     let currentQuestion = 1;
@@ -162,27 +170,56 @@
     const qGrid = document.getElementById('qGrid');
     for (let i = 1; i <= 20; i++) {
         const btn = document.createElement('button');
-        btn.className = i === 1 ? 'q-btn active' : 'q-btn';
+        btn.className = 'q-btn';
+        btn.id = 'qbtn-' + i;
         btn.innerText = i;
-        btn.onclick = () => setQuestion(i, btn);
+        btn.onclick = () => changeQuestion(i);
         qGrid.appendChild(btn);
     }
 
-    // Проверяем, включен ли режим ведущего (?admin=1 в конце ссылки)
+    // Проверяем, админ ли это
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('admin') === '1') {
+    const isAdmin = urlParams.get('admin') === '1';
+    if (isAdmin) {
         document.getElementById('adminPanel').style.display = 'block';
     }
 
-    function setQuestion(num, btnElement) {
+    // Функция смены вопроса для ведущего
+    function changeQuestion(num) {
+        // Отправляем запрос в табличку, чтобы запомнить новый вопрос
+        fetch(`${WEB_APP_URL}?setQ=${num}`)
+            .then(() => {
+                updateActiveButton(num);
+            })
+            .catch(err => console.error('Ошибка смены вопроса:', err));
+    }
+
+    function updateActiveButton(num) {
         currentQuestion = num;
         document.querySelectorAll('.q-btn').forEach(b => b.classList.remove('active'));
-        btnElement.classList.add('active');
-        
-        const statusDiv = document.getElementById('status');
-        statusDiv.style.color = '#58a6ff';
-        statusDiv.innerText = `⚠️ Вы переключились на вопрос №${num}`;
+        const activeBtn = document.getElementById('qbtn-' + num);
+        if (activeBtn) activeBtn.classList.add('active');
+        document.getElementById('questionIndicator').innerText = `Вопрос №${num}`;
     }
+
+    // Каждую секунду опрашиваем таблицу, какой сейчас вопрос у ведущего
+    function pollCurrentQuestion() {
+        fetch(WEB_APP_URL)
+            .then(response => response.text())
+            .then(text => {
+                const qNum = parseInt(text.trim());
+                if (!isNaN(qNum) && qNum >= 1 && qNum <= 20) {
+                    if (qNum !== currentQuestion) {
+                        updateActiveButton(qNum);
+                    }
+                }
+            })
+            .catch(err => {});
+    }
+
+    // Запускаем проверку каждые 1.5 секунды
+    setInterval(pollCurrentQuestion, 1500);
+    pollCurrentQuestion();
 
     function sendChoice(num) {
         if (isCooldown) return;
@@ -200,7 +237,7 @@
 
         const payload = {
             name: nameInput,
-            questionNum: currentQuestion, // Улетает выбранный вами номер вопроса
+            questionNum: currentQuestion, // Улетает тот вопрос, который сейчас активен у ведущего
             choice: num
         };
 

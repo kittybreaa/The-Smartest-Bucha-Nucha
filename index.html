@@ -55,7 +55,6 @@
             border: 1px solid #30363d;
         }
 
-        /* Панель ведущего */
         #adminPanel {
             display: none;
             background: #21262d;
@@ -140,13 +139,11 @@
 <div class="card">
     <h2 style="margin-top:0; font-size: 20px;">Викторина</h2>
     
-    <!-- Панель ведущего (открывается по ссылке ?admin=1) -->
     <div id="adminPanel">
         <div class="admin-title">⚙️ Панель ведущего:</div>
         <div class="q-grid" id="qGrid"></div>
     </div>
 
-    <!-- Индикатор текущего вопроса -->
     <div id="questionIndicator">Вопрос №1</div>
 
     <input type="text" id="username" placeholder="Ваше имя..." autocomplete="off">
@@ -162,11 +159,11 @@
 </div>
 
 <script>
-    // Вставь сюда свою новую ссылку на развертывание Google Apps Script
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwo8_yCHgwYCXXXl8Tgd3Olue23opWC2I6m6N-h_FH1MV_nrB3d-dbpPjuz0w8-Q44Tgw/exec';
 
     let currentQuestion = 1;
     let isCooldown = false;
+    let isFetching = false; // Защита от наложения запросов
 
     const urlParams = new URLSearchParams(window.location.search);
     const isAdmin = urlParams.get('admin') === '1';
@@ -174,7 +171,6 @@
         document.getElementById('adminPanel').style.display = 'block';
     }
 
-    // Создаем кнопки для админа
     const qGrid = document.getElementById('qGrid');
     for (let i = 1; i <= 20; i++) {
         const btn = document.createElement('button');
@@ -189,7 +185,6 @@
         currentQuestion = num;
         highlightButton(num);
 
-        // Отправляем запрос на смену вопроса ведущим
         fetch(`${WEB_APP_URL}?setQ=${num}`)
             .catch(err => console.log('Ошибка смены вопроса:', err));
 
@@ -205,11 +200,15 @@
         document.getElementById('questionIndicator').innerText = `Вопрос №${num}`;
     }
 
-    // Фоновая проверка актуального вопроса (для игроков и ведущего)
+    // Безопасная синхронизация без наложения запросов
     function syncQuestion() {
+        if (isFetching) return; // Если предыдущий запрос еще идет — пропускаем этот такт
+        isFetching = true;
+
         fetch(WEB_APP_URL)
             .then(res => res.text())
             .then(text => {
+                isFetching = false;
                 const qNum = parseInt(text.trim());
                 if (!isNaN(qNum) && qNum >= 1 && qNum <= 20) {
                     if (qNum !== currentQuestion) {
@@ -218,11 +217,13 @@
                     }
                 }
             })
-            .catch(err => {});
+            .catch(err => {
+                isFetching = false;
+            });
     }
 
-    // Проверяем изменения каждые 2 секунды
-    setInterval(syncQuestion, 2000);
+    // Проверяем каждые 3 секунды (чуть реже, чтобы разгрузить сеть и убрать лаги)
+    setInterval(syncQuestion, 3000);
     syncQuestion();
 
     function sendChoice(num) {
@@ -245,11 +246,10 @@
             choice: num
         };
 
-        // Отправка ответов в табличку
         fetch(WEB_APP_URL, {
             method: 'POST',
             headers: {
-                'Content-Type': 'text/plain;charset=utf-8', // Изменено для надежного обхода CORS
+                'Content-Type': 'text/plain;charset=utf-8',
             },
             body: JSON.stringify(payload)
         })
@@ -260,8 +260,6 @@
             startCooldown(10);
         })
         .catch(error => {
-            console.error('Ошибка отправки ответа:', error);
-            // Если ответ всё равно ушел в таблицу, но браузер ругнулся на ответ сервера:
             statusDiv.style.color = '#2ea44f';
             statusDiv.innerText = `Ответ [ ${num} ] отправлен!`;
             startCooldown(10);

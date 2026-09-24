@@ -56,7 +56,7 @@
             display: none;
             background: #21262d;
             border: 1px solid #30363d;
-            padding: 12px;
+            padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
         }
@@ -64,7 +64,7 @@
         .admin-title {
             font-size: 13px;
             color: #f0883e;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-weight: bold;
             text-align: left;
         }
@@ -72,9 +72,8 @@
         .q-grid {
             display: grid;
             grid-template-columns: repeat(5, 1fr);
-            gap: 5px;
-            max-height: 140px;
-            overflow-y: auto;
+            gap: 6px;
+            margin-bottom: 12px;
         }
 
         .q-btn {
@@ -92,6 +91,18 @@
             color: white;
             border-color: #388bfd;
             font-weight: bold;
+        }
+
+        #copyLinkBtn {
+            width: 100%;
+            padding: 10px;
+            background: #238636;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
         }
 
         .grid {
@@ -140,11 +151,12 @@
     
     <!-- Панель ведущего -->
     <div id="adminPanel">
-        <div class="admin-title">⚙️ Панель ведущего (мгновенный выбор):</div>
+        <div class="admin-title">⚙️ Панель ведущего: выбери вопрос</div>
         <div class="q-grid" id="qGrid"></div>
+        <button id="copyLinkBtn" onclick="copyQuestionLink()">📋 Скопировать ссылку на этот вопрос</button>
     </div>
 
-    <!-- Индикатор текущего вопроса -->
+    <!-- Индикатор текущего вопроса у игрока -->
     <div id="questionIndicator">Вопрос №1</div>
 
     <input type="text" id="username" placeholder="Ваше имя..." autocomplete="off">
@@ -163,49 +175,43 @@
     // Вставь сюда свою ссылку на Google Apps Script
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwo8_yCHgwYCXXXl8Tgd3Olue23opWC2I6m6N-h_FH1MV_nrB3d-dbpPjuz0w8-Q44Tgw/exec';
 
-    let currentQuestion = 1;
     let isCooldown = false;
 
-    // Проверяем URL на наличие номера вопроса для игроков (например, ?q=3) или админки
+    // Считываем номер вопроса из ссылки (?q=...)
     const urlParams = new URLSearchParams(window.location.search);
     const isAdmin = urlParams.get('admin') === '1';
+    let currentQuestion = parseInt(urlParams.get('q')) || 1;
 
     if (isAdmin) {
         document.getElementById('adminPanel').style.display = 'block';
-        // Админ может взять сохраненный вопрос или начать с 1
-        currentQuestion = parseInt(localStorage.getItem('quiz_q')) || 1;
-    } else {
-        // Игрок получает вопрос из ссылки, которую ты обновил, ИЛИ из памяти
-        currentQuestion = parseInt(urlParams.get('q')) || parseInt(localStorage.getItem('quiz_q')) || 1;
-    }
-
-    // Генерируем 20 кнопок для админ-панели
-    const qGrid = document.getElementById('qGrid');
-    for (let i = 1; i <= 20; i++) {
-        const btn = document.createElement('button');
-        btn.className = i === currentQuestion ? 'q-btn active' : 'q-btn';
-        btn.id = 'qbtn-' + i;
-        btn.innerText = i;
-        btn.onclick = () => changeQuestion(i);
-        qGrid.appendChild(btn);
     }
 
     document.getElementById('questionIndicator').innerText = `Вопрос №${currentQuestion}`;
 
-    // Мгновенное переключение у ведущего без тормозов
-    function changeQuestion(num) {
-        currentQuestion = num;
-        localStorage.setItem('quiz_q', num); // Сохраняем выбор ведущего локально
+    // Генерируем кнопки для админ-панели (1-20)
+    const qGrid = document.getElementById('qGrid');
+    for (let i = 1; i <= 20; i++) {
+        const btn = document.createElement('button');
+        btn.className = i === currentQuestion ? 'q-btn active' : 'q-btn';
+        btn.innerText = i;
+        btn.onclick = () => {
+            // Переходим на ту же страницу, но с новым номером вопроса в ссылке
+            const baseUrl = window.location.origin + window.location.pathname;
+            window.location.href = `${baseUrl}?admin=1&q=${i}`;
+        };
+        qGrid.appendChild(btn);
+    }
 
-        document.querySelectorAll('.q-btn').forEach(b => b.classList.remove('active'));
-        const activeBtn = document.getElementById('qbtn-' + num);
-        if (activeBtn) activeBtn.classList.add('active');
-
-        document.getElementById('questionIndicator').innerText = `Вопрос №${num}`;
+    // Функция копирования готовой ссылки для игроков на этот вопрос
+    function copyQuestionLink() {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const playerLink = `${baseUrl}?q=${currentQuestion}`;
         
-        const statusDiv = document.getElementById('status');
-        statusDiv.style.color = '#58a6ff';
-        statusDiv.innerText = `⚡ Переключено на вопрос ${num}`;
+        navigator.clipboard.writeText(playerLink).then(() => {
+            const btn = document.getElementById('copyLinkBtn');
+            btn.innerText = '✅ Ссылка скопирована!';
+            setTimeout(() => { btn.innerText = '📋 Скопировать ссылку на этот вопрос'; }, 2000);
+        });
     }
 
     function sendChoice(num) {
@@ -224,11 +230,10 @@
 
         const payload = {
             name: nameInput,
-            questionNum: currentQuestion, // Отправляет текущий выбранный вопрос
+            questionNum: currentQuestion,
             choice: num
         };
 
-        // Отправляем ответ в таблицу (используем no-cors, чтобы не зависать)
         fetch(WEB_APP_URL, {
             method: 'POST',
             mode: 'no-cors',
@@ -272,6 +277,9 @@
         }, 1000);
     }
 </script>
+
+</body>
+</html>
 
 </body>
 </html>

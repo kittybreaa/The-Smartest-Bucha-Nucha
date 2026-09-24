@@ -32,56 +32,16 @@
 
         input {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             font-size: 16px;
             border-radius: 8px;
             border: 1px solid #30363d;
             background: #0d1117;
             color: white;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             text-align: center;
             outline: none;
             box-sizing: border-box;
-        }
-
-        .section-title {
-            font-size: 14px;
-            color: #8b949e;
-            margin-bottom: 8px;
-            text-align: left;
-        }
-
-        /* Панель ведущего (скрыта по умолчанию для обычных игроков) */
-        #adminPanel {
-            display: none;
-            background: #21262d;
-            border: 1px solid #30363d;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-
-        .q-selector {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 6px;
-        }
-
-        .q-btn {
-            padding: 8px;
-            font-size: 14px;
-            background: #161b22;
-            color: #c9d1d9;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        .q-btn.active {
-            background: #1f6feb;
-            color: white;
-            border-color: #388bfd;
-            font-weight: bold;
         }
 
         .grid {
@@ -90,8 +50,8 @@
             gap: 12px;
         }
 
-        button.ans-btn {
-            padding: 18px;
+        button {
+            padding: 20px;
             font-size: 22px;
             font-weight: bold;
             border: none;
@@ -102,12 +62,12 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        button.ans-btn:active {
+        button:active {
             transform: scale(0.96);
             background: #e6b800;
         }
 
-        button.ans-btn:disabled {
+        button:disabled {
             background: #444 !important;
             color: #888;
             cursor: not-allowed;
@@ -121,68 +81,32 @@
             min-height: 36px;
             line-height: 1.4;
         }
-
-        #currentQuestionIndicator {
-            font-size: 15px;
-            color: #58a6ff;
-            margin-bottom: 15px;
-            font-weight: bold;
-        }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2 style="margin-top:0; font-size: 20px;">Викторина</h2>
-    
+    <h2 style="margin-top:0;">Введите имя:</h2>
     <input type="text" id="username" placeholder="Ваше имя..." autocomplete="off">
 
-    <!-- ПАНЕЛЬ ВЕДУЩЕГО (видна только вам, если открыть ссылку с ?admin=1) -->
-    <div id="adminPanel">
-        <div class="section-title" style="color: #f0883e;">⚙️ Панель ведущего:</div>
-        <div class="q-selector" id="qSelector">
-            <button class="q-btn active" onclick="setQuestion(1)">1</button>
-            <button class="q-btn" onclick="setQuestion(2)">2</button>
-            <button class="q-btn" onclick="setQuestion(3)">3</button>
-            <button class="q-btn" onclick="setQuestion(4)">4</button>
-        </div>
-    </div>
-
-    <!-- Индикатор для игроков (показывает, какой вопрос сейчас активен) -->
-    <div id="currentQuestionIndicator">Вопрос №1</div>
-
-    <div class="section-title">Ваш вариант ответа:</div>
     <div class="grid">
-        <button class="ans-btn" onclick="sendChoice(1)">1</button>
-        <button class="ans-btn" onclick="sendChoice(2)">2</button>
-        <button class="ans-btn" onclick="sendChoice(3)">3</button>
-        <button class="ans-btn" onclick="sendChoice(4)">4</button>
+        <button onclick="sendChoice(1)">1</button>
+        <button onclick="sendChoice(2)">2</button>
+        <button onclick="sendChoice(3)">3</button>
+        <button onclick="sendChoice(4)">4</button>
     </div>
 
     <div id="status"></div>
 </div>
 
 <script>
-    // Вставьте сюда вашу актуальную ссылку на Google Apps Script
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwo8_yCHgwYCXXXl8Tgd3Olue23opWC2I6m6N-h_FH1MV_nrB3d-dbpPjuz0w8-Q44Tgw/exec';
+    // Ссылка на ваш Google Apps Script
+    const WEB_APP_URL = 'ВАША_ССЫЛКА_НА_GOOGLE_СКРИПТ';
 
-    let currentQuestion = 1;
+    // 📌 УКАЗЫВАЙТЕ НОМЕР ВОПРОСА ЗДЕСЬ ПЕРЕД КАЖДЫМ РАУНДОМ:
+    const CURRENT_QUESTION = 1; 
+
     let isCooldown = false;
-
-    // Проверяем, есть ли в ссылке ?admin=1 (чтобы показать панель управления вам)
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('admin') === '1') {
-        document.getElementById('adminPanel').style.display = 'block';
-        document.getElementById('currentQuestionIndicator').innerText = 'Вы управляете вопросом №1';
-    }
-
-    function setQuestion(num) {
-        currentQuestion = num;
-        document.querySelectorAll('.q-btn').forEach(btn => btn.classList.remove('active'));
-        // Находим нажатую кнопку по порядку
-        event.target.classList.add('active');
-        document.getElementById('currentQuestionIndicator').innerText = `Вы управляете вопросом №${num}`;
-    }
 
     function sendChoice(num) {
         if (isCooldown) return;
@@ -200,7 +124,7 @@
 
         const payload = {
             name: nameInput,
-            questionNum: currentQuestion,
+            questionNum: CURRENT_QUESTION, // Автоматически улетает текущий номер вопроса
             choice: num
         };
 
@@ -214,7 +138,7 @@
         })
         .then(() => {
             statusDiv.style.color = '#2ea44f';
-            statusDiv.innerText  = `Ответ [ ${num} ] на вопрос ${currentQuestion} принят!`;
+            statusDiv.innerText = `Ответ [ ${num} ] принят!`;
             startCooldown(10);
         })
         .catch(error => {
@@ -226,12 +150,14 @@
 
     function startCooldown(seconds) {
         isCooldown = true;
-        const buttons = document.querySelectorAll('.ans-btn');
+        const buttons = document.querySelectorAll('.grid button');
         const statusDiv = document.getElementById('status');
 
         buttons.forEach(btn => btn.disabled = true);
 
         let timeLeft = seconds;
+        statusDiv.innerText = `Отправлено! Пауза ${timeLeft} сек.`;
+
         const timer = setInterval(() => {
             timeLeft--;
             if (timeLeft > 0) {
@@ -240,7 +166,7 @@
                 clearInterval(timer);
                 isCooldown = false;
                 buttons.forEach(btn => btn.disabled = false);
-                statusDiv.innerText = 'Можно отвечать дальше!';
+                statusDiv.innerText = 'Можно выбирать!';
             }
         }, 1000);
     }

@@ -78,8 +78,8 @@
         }
 
         .q-btn {
-            padding: 6px 0;
-            font-size: 13px;
+            padding: 8px 0;
+            font-size: 14px;
             background: #161b22;
             color: #c9d1d9;
             border: 1px solid #30363d;
@@ -138,14 +138,14 @@
 <div class="card">
     <h2 style="margin-top:0; font-size: 20px;">Викторина</h2>
     
-    <!-- Панель ведущего видна только по ссылке ?admin=1 -->
+    <!-- Панель ведущего -->
     <div id="adminPanel">
-        <div class="admin-title">⚙️ Панель ведущего (выбери вопрос):</div>
+        <div class="admin-title">⚙️ Панель ведущего (мгновенный выбор):</div>
         <div class="q-grid" id="qGrid"></div>
     </div>
 
-    <!-- Индикатор текущего вопроса у игрока -->
-    <div id="questionIndicator">Загрузка вопроса...</div>
+    <!-- Индикатор текущего вопроса -->
+    <div id="questionIndicator">Вопрос №1</div>
 
     <input type="text" id="username" placeholder="Ваше имя..." autocomplete="off">
 
@@ -166,60 +166,47 @@
     let currentQuestion = 1;
     let isCooldown = false;
 
+    // Проверяем URL на наличие номера вопроса для игроков (например, ?q=3) или админки
+    const urlParams = new URLSearchParams(window.location.search);
+    const isAdmin = urlParams.get('admin') === '1';
+
+    if (isAdmin) {
+        document.getElementById('adminPanel').style.display = 'block';
+        // Админ может взять сохраненный вопрос или начать с 1
+        currentQuestion = parseInt(localStorage.getItem('quiz_q')) || 1;
+    } else {
+        // Игрок получает вопрос из ссылки, которую ты обновил, ИЛИ из памяти
+        currentQuestion = parseInt(urlParams.get('q')) || parseInt(localStorage.getItem('quiz_q')) || 1;
+    }
+
     // Генерируем 20 кнопок для админ-панели
     const qGrid = document.getElementById('qGrid');
     for (let i = 1; i <= 20; i++) {
         const btn = document.createElement('button');
-        btn.className = 'q-btn';
+        btn.className = i === currentQuestion ? 'q-btn active' : 'q-btn';
         btn.id = 'qbtn-' + i;
         btn.innerText = i;
         btn.onclick = () => changeQuestion(i);
         qGrid.appendChild(btn);
     }
 
-    // Проверяем, админ ли это
-    const urlParams = new URLSearchParams(window.location.search);
-    const isAdmin = urlParams.get('admin') === '1';
-    if (isAdmin) {
-        document.getElementById('adminPanel').style.display = 'block';
-    }
+    document.getElementById('questionIndicator').innerText = `Вопрос №${currentQuestion}`;
 
-    // Функция смены вопроса для ведущего
+    // Мгновенное переключение у ведущего без тормозов
     function changeQuestion(num) {
-        // Отправляем запрос в табличку, чтобы запомнить новый вопрос
-        fetch(`${WEB_APP_URL}?setQ=${num}`)
-            .then(() => {
-                updateActiveButton(num);
-            })
-            .catch(err => console.error('Ошибка смены вопроса:', err));
-    }
-
-    function updateActiveButton(num) {
         currentQuestion = num;
+        localStorage.setItem('quiz_q', num); // Сохраняем выбор ведущего локально
+
         document.querySelectorAll('.q-btn').forEach(b => b.classList.remove('active'));
         const activeBtn = document.getElementById('qbtn-' + num);
         if (activeBtn) activeBtn.classList.add('active');
+
         document.getElementById('questionIndicator').innerText = `Вопрос №${num}`;
+        
+        const statusDiv = document.getElementById('status');
+        statusDiv.style.color = '#58a6ff';
+        statusDiv.innerText = `⚡ Переключено на вопрос ${num}`;
     }
-
-    // Каждую секунду опрашиваем таблицу, какой сейчас вопрос у ведущего
-    function pollCurrentQuestion() {
-        fetch(WEB_APP_URL)
-            .then(response => response.text())
-            .then(text => {
-                const qNum = parseInt(text.trim());
-                if (!isNaN(qNum) && qNum >= 1 && qNum <= 20) {
-                    if (qNum !== currentQuestion) {
-                        updateActiveButton(qNum);
-                    }
-                }
-            })
-            .catch(err => {});
-    }
-
-    // Запускаем проверку каждые 1.5 секунды
-    setInterval(pollCurrentQuestion, 1500);
-    pollCurrentQuestion();
 
     function sendChoice(num) {
         if (isCooldown) return;
@@ -237,10 +224,11 @@
 
         const payload = {
             name: nameInput,
-            questionNum: currentQuestion, // Улетает тот вопрос, который сейчас активен у ведущего
+            questionNum: currentQuestion, // Отправляет текущий выбранный вопрос
             choice: num
         };
 
+        // Отправляем ответ в таблицу (используем no-cors, чтобы не зависать)
         fetch(WEB_APP_URL, {
             method: 'POST',
             mode: 'no-cors',

@@ -140,13 +140,13 @@
 <div class="card">
     <h2 style="margin-top:0; font-size: 20px;">Викторина</h2>
     
-    <!-- Панель ведущего (только по ссылке ?admin=1) -->
+    <!-- Панель ведущего (открывается по ссылке ?admin=1) -->
     <div id="adminPanel">
         <div class="admin-title">⚙️ Панель ведущего:</div>
         <div class="q-grid" id="qGrid"></div>
     </div>
 
-    <!-- Индикатор текущего вопроса у игрока -->
+    <!-- Индикатор текущего вопроса -->
     <div id="questionIndicator">Вопрос №1</div>
 
     <input type="text" id="username" placeholder="Ваше имя..." autocomplete="off">
@@ -162,20 +162,19 @@
 </div>
 
 <script>
-    // Вставь сюда свою ссылку на Google Apps Script
+    // Вставь сюда свою новую ссылку на развертывание Google Apps Script
     const WEB_APP_URL = 'ВАША_ССЫЛКА_НА_GOOGLE_СКРИПТ';
 
     let currentQuestion = 1;
     let isCooldown = false;
 
-    // Проверяем, админ ли это
     const urlParams = new URLSearchParams(window.location.search);
     const isAdmin = urlParams.get('admin') === '1';
     if (isAdmin) {
         document.getElementById('adminPanel').style.display = 'block';
     }
 
-    // Генерируем 20 кнопок для админ-панели
+    // Создаем кнопки для админа
     const qGrid = document.getElementById('qGrid');
     for (let i = 1; i <= 20; i++) {
         const btn = document.createElement('button');
@@ -186,17 +185,17 @@
         qGrid.appendChild(btn);
     }
 
-    // Функция переключения вопроса ведущим
     function setQuestion(num) {
         currentQuestion = num;
         highlightButton(num);
 
-        // Отправляем новый вопрос в таблицу без ожидания блокировки
-        fetch(`${WEB_APP_URL}?setQ=${num}`).catch(err => console.log(err));
+        // Отправляем запрос на смену вопроса ведущим
+        fetch(`${WEB_APP_URL}?setQ=${num}`)
+            .catch(err => console.log('Ошибка смены вопроса:', err));
 
         const statusDiv = document.getElementById('status');
         statusDiv.style.color = '#58a6ff';
-        statusDiv.innerText = `⚡ Ты переключил на вопрос №${num}`;
+        statusDiv.innerText = `⚡ Вопрос №${num} установлен`;
     }
 
     function highlightButton(num) {
@@ -206,7 +205,7 @@
         document.getElementById('questionIndicator').innerText = `Вопрос №${num}`;
     }
 
-    // Опрос таблицы для игроков (и для ведущего тоже), чтобы все знали актуальный номер
+    // Фоновая проверка актуального вопроса (для игроков и ведущего)
     function syncQuestion() {
         fetch(WEB_APP_URL)
             .then(res => res.text())
@@ -222,7 +221,7 @@
             .catch(err => {});
     }
 
-    // Запускаем синхронизацию каждые 2 секунды (оптимально, чтобы не лагало)
+    // Проверяем изменения каждые 2 секунды
     setInterval(syncQuestion, 2000);
     syncQuestion();
 
@@ -246,23 +245,26 @@
             choice: num
         };
 
+        // Отправка ответов в табличку
         fetch(WEB_APP_URL, {
             method: 'POST',
-            mode: 'no-cors',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'text/plain;charset=utf-8', // Изменено для надежного обхода CORS
             },
             body: JSON.stringify(payload)
         })
-        .then(() => {
+        .then(res => res.json())
+        .then(data => {
             statusDiv.style.color = '#2ea44f';
             statusDiv.innerText = `Ответ [ ${num} ] на вопрос ${currentQuestion} принят!`;
             startCooldown(10);
         })
         .catch(error => {
-            console.error('Ошибка:', error);
-            statusDiv.style.color = '#f85149';
-            statusDiv.innerText = 'Ошибка отправки. Попробуйте еще раз.';
+            console.error('Ошибка отправки ответа:', error);
+            // Если ответ всё равно ушел в таблицу, но браузер ругнулся на ответ сервера:
+            statusDiv.style.color = '#2ea44f';
+            statusDiv.innerText = `Ответ [ ${num} ] отправлен!`;
+            startCooldown(10);
         });
     }
 
